@@ -1,0 +1,37 @@
+Implementation Details: Hybrid Parallelism Assignment
+
+1. Development Environment Choices
+   - Programming Language: Python 3.x
+     - Chosen for its simplicity and the ability to rapidly prototype distributed logic using threading/multiprocessing primitives without needing actual hardware setup.
+     - Typically used with frameworks like PyTorch or TensorFlow for ML.
+   - Libraries:
+     - threading: Simulates concurrent execution of multiple GPU devices within a single process.
+     - queue: Models asynchronous communication buffers (inter-stage queues) between pipeline stages.
+     - time & random: Used to simulate computation delays (Forward/Backward passes) and communication latency.
+   - IDE/Platform: Standard Python environment on Local Workstation (Windows/Linux/macOS).
+
+2. Execution Platform Choices
+   - Simulation Platform:
+     - Hardware: Single Multi-core CPU (e.g., Intel Core i7/i9 or AMD Ryzen).
+     - OS: Windows or Linux.
+     - Constraint: The simulation runs on CPU but models the behavior of a distributed GPU cluster.
+   - Target Deployment Platform (Real-World Scenario):
+     - Hardware: High-Performance GPU Cluster (e.g., 8x NVIDIA A100/H100 per node).
+     - Interconnect: NVLink for intra-node (fast All-Reduce) and InfiniBand for inter-node communication.
+     - OS: Linux (Ubuntu 20.04/22.04 LTS) optimized for HPC/Deep Learning.
+     - Software Stack: CUDA 11.x/12.x, NCCL (NVIDIA Collective Communications Library) for optimized ring all-reduce.
+
+3. Implementation Aspects & Design Choices
+   - Hybrid Parallelism Strategy:
+     - Pipeline Parallelism: Implemented using the 1F1B (One-Forward-One-Backward) schedule. This choice minimizes pipeline "bubbles" (idle time) compared to the simpler GPipe schedule and significantly reduces peak memory usage by releasing activation memory earlier (during backward pass) rather than accumulating it until all forward passes are done.
+     - Data Parallelism: Implemented using Ring All-Reduce. This reduces the communication bottleneck bandwidth requirement to remain constant regardless of the number of GPUs, unlike a Parameter Server approach.
+
+   - Process Model (Simulation):
+     - Each "Device" runs in a separate thread to simulate independent execution logic.
+     - Synchronization is managed via thread joins and shared event logs.
+
+   - Micro-Batching:
+     - The global batch is split into multiple micro-batches (e.g., 8 in our simulation). This allows pipeline stages to overlap computation and communication effectively.
+
+   - Communication Modeling:
+     - Estimated costs: Forward/Backward compute takes significant time (50ms/80ms), while communication (Peer-to-Peer transfer, All-Reduce steps) is modeled with shorter durations (20ms/step) to reflect high-bandwidth interconnects relative to compute intensity.
